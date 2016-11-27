@@ -80,8 +80,8 @@ public class MyWatchFace extends CanvasWatchFaceService {
 	private static final String KEY_HIGH = "high_temp";
 	private static final String KEY_LOW = "low_temp";
 	private static final String KEY_ID = "weather_id";
-	private String mHighTemp;
-	private String mLowTemp;
+	private String mHighTemperature;
+	private String mLowTemperature;
 	private int mWeatherId;
 	private GoogleApiClient mGoogleApiClient;
 	@Override
@@ -313,30 +313,30 @@ public class MyWatchFace extends CanvasWatchFaceService {
 				mPaintDate.setColor(ContextCompat.getColor(mContext,R.color.primary_light));
 			}
 			canvas.drawText(DATE_TODAY, bounds.centerX() - mXOffsetDate, mYOffsetDate, mPaintDate);
-			if (mHighTemp != null && mLowTemp != null) {
+			if (mHighTemperature != null && mLowTemperature != null) {
 				int textMargin = 20, iconMargin = 30;
 				// draw date-temperature divider line
 				canvas.drawLine(bounds.centerX() - mXOffsetDate, mYOffsetDivider, bounds.centerX() + mXOffsetDate, mYOffsetDivider, mPaintDate);
 
-				float highTextSize = mPaintHighTemperature.measureText(mHighTemp);
+				float highTextSize = mPaintHighTemperature.measureText(mHighTemperature);
 				if (mAmbient) {
 					mPaintLowTemperature.setColor(ContextCompat.getColor(mContext,R.color.digital_text));
-					float lowTextSize = mPaintLowTemperature.measureText(mLowTemp);
+					float lowTextSize = mPaintLowTemperature.measureText(mLowTemperature);
 					float xOffset = bounds.centerX() - ((highTextSize + lowTextSize + textMargin) / 2);
-					canvas.drawText(mHighTemp, xOffset, mYOffsetWeather, mPaintHighTemperature);
-					canvas.drawText(mLowTemp, xOffset + highTextSize + textMargin, mYOffsetWeather, mPaintLowTemperature);
+					canvas.drawText(mHighTemperature, xOffset, mYOffsetWeather, mPaintHighTemperature);
+					canvas.drawText(mLowTemperature, xOffset + highTextSize + textMargin, mYOffsetWeather, mPaintLowTemperature);
 				} else {
 					mPaintLowTemperature.setColor(ContextCompat.getColor(mContext,R.color.primary_light));
 					float xOffset = bounds.centerX() - (highTextSize / 2);
-					canvas.drawText(mHighTemp, xOffset, mYOffsetWeather, mPaintHighTemperature);
-					canvas.drawText(mLowTemp, bounds.centerX() + (highTextSize / 2) + textMargin, mYOffsetWeather, mPaintLowTemperature);
+					canvas.drawText(mHighTemperature, xOffset, mYOffsetWeather, mPaintHighTemperature);
+					canvas.drawText(mLowTemperature, bounds.centerX() + (highTextSize / 2) + textMargin, mYOffsetWeather, mPaintLowTemperature);
 
 					Drawable drawable = ContextCompat.getDrawable(mContext,Utility.getIconResourceForWeatherCondition(mWeatherId));
 					Bitmap icon = ((BitmapDrawable) drawable).getBitmap();
 					float scaledWidth = (mPaintHighTemperature.getTextSize() / icon.getHeight()) * icon.getWidth();
 					Bitmap weatherIcon = Bitmap.createScaledBitmap(icon, (int) scaledWidth, (int) mPaintHighTemperature.getTextSize(), true);
 					float iconXOffset = bounds.centerX() - ((highTextSize / 2) + weatherIcon.getWidth() + iconMargin);
-					canvas.drawBitmap(weatherIcon, iconXOffset, mYOffsetWeather - weatherIcon.getHeight(), null);
+					canvas.drawBitmap(weatherIcon, iconXOffset, mYOffsetWeather - weatherIcon.getHeight()+5, null);
 				}
 			}
 
@@ -398,10 +398,10 @@ public class MyWatchFace extends CanvasWatchFaceService {
 					DataItem dataItem = dataEvent.getDataItem();
 					if (dataItem.getUri().getPath().compareTo(PATH_WEATHER) == 0) {
 						DataMap dataMap = DataMapItem.fromDataItem(dataItem).getDataMap();
-						mHighTemp = dataMap.getString(KEY_HIGH);
-						mLowTemp = dataMap.getString(KEY_LOW);
+						mHighTemperature = dataMap.getString(KEY_HIGH);
+						mLowTemperature = dataMap.getString(KEY_LOW);
 						mWeatherId = dataMap.getInt(KEY_ID);
-						Log.e("WATCH_DATA", "\nHigh: " + mHighTemp + "\nLow: " + mLowTemp + "\nID: " + mWeatherId);
+						Log.e("WATCH_DATA", "\nHigh: " + mHighTemperature + "\nLow: " + mLowTemperature + "\nID: " + mWeatherId);
 						invalidate();
 					}
 				}

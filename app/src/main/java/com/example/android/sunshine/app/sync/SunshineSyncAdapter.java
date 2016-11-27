@@ -36,6 +36,12 @@ import com.example.android.sunshine.app.R;
 import com.example.android.sunshine.app.Utility;
 import com.example.android.sunshine.app.data.WeatherContract;
 import com.example.android.sunshine.app.muzei.WeatherMuzeiSource;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.wearable.DataMap;
+import com.google.android.gms.wearable.PutDataMapRequest;
+import com.google.android.gms.wearable.PutDataRequest;
+import com.google.android.gms.wearable.Wearable;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -51,11 +57,19 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Vector;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
     public final String LOG_TAG = SunshineSyncAdapter.class.getSimpleName();
     public static final String ACTION_DATA_UPDATED =
             "com.example.android.sunshine.app.ACTION_DATA_UPDATED";
+
+    private static final String PATH_WEATHER = "/weather";
+    private static final String KEY_HIGH = "high_temp";
+    private static final String KEY_LOW = "low_temp";
+    private static final String KEY_ID = "weather_id";
+    private static final String KEY_TIMESTAMP = "timestamp";
+
     // Interval at which to sync with the weather, in seconds.
     // 60 seconds (1 minute) * 180 = 3 hours
     public static final int SYNC_INTERVAL = 60 * 180;
@@ -347,6 +361,7 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
                 updateWidgets();
                 updateMuzei();
                 notifyWeather();
+                pushWeatherToWatchFace();
             }
             Log.d(LOG_TAG, "Sync Complete. " + cVVector.size() + " Inserted");
             setLocationStatus(getContext(), LOCATION_STATUS_OK);
@@ -635,5 +650,45 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
         SharedPreferences.Editor spe = sp.edit();
         spe.putInt(c.getString(R.string.pref_location_status_key), locationStatus);
         spe.commit();
+    }
+
+    private void pushWeatherToWatchFace() {
+        String location = Utility.getPreferredLocation(getContext());
+        Uri weatherUri = WeatherContract.WeatherEntry.buildWeatherLocationWithStartDate(location, System.currentTimeMillis());
+        Cursor cursor = getContext().getContentResolver().query(weatherUri, NOTIFY_WEATHER_PROJECTION, null, null, null);
+        if (cursor == null) {
+            return;
+        }
+        if (!cursor.moveToFirst()) {
+            cursor.close();
+            return;
+        }
+
+        GoogleApiClient googleApiClient = new GoogleApiClient.Builder(getContext())
+                .addApi(Wearable.API)
+                .build();
+
+        ConnectionResult connectionResult = googleApiClient.blockingConnect(30, TimeUnit.SECONDS);
+        if (!connectionResult.isSuccess()) {
+            return;
+        }
+
+        PutDataMapRequest mapRequest = PutDataMapRequest.create(PATH_WEATHER);
+        DataMap dataMap = mapRequest.getDataMap();
+        dataMap.putString(KEY_HIGH, Utility.formatTemperature(getContext(), cursor.getDouble(INDEX_MAX_TEMP)));
+        dataMap.putString(KEY_LOW, Utility.formatTemperature(getContext(), cursor.getDouble(INDEX_MIN_TEMP)));
+        dataMap.putInt(KEY_ID, cursor.getInt(INDEX_WEATHER_ID));
+	    /**
+         * onDataChanged() will be called only in the wear module if the data has changed.
+         * To ensure this, you could add a 'timestamp' parameter. For example:
+         */
+        dataMap.putLong(KEY_TIMESTAMP,System.currentTimeMillis());
+	    /**
+         * the data may take up to 30 minutes to be sent to wear module
+         */
+        PutDataRequest putDataRequest = mapRequest.asPutDataRequest().setUrgent();
+        Wearable.DataApi.putDataItem(googleApiClient, putDataRequest);
+
+        // referred: https://discussions.udacity.com/t/sunshine-syncadapter-is-sending-data-but-wearable-cant-retrieve-it/171790/3?u=rnztx
     }
 }
